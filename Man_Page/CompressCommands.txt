@@ -1,0 +1,7 @@
+gzip xsc.3
+# xsc.3.gz will be created
+
+/usr/share/man/man3/
+sudo cp xsc.3.gz /usr/share/man/man3/
+
+man xsc

@@ -1,0 +1,166 @@
+.TH xsc 3 2026-02-28 1.0
+
+.SH NAME 
+.BR xsc256init ,
+.BR xsc256byte ,
+.BR xsc256encrypt ,
+.BR xsc256decrypt , 
+.BR xsc256uninit ,
+.BR xsc256kdf ,
+.BR encryptfile 
+- the Expansion/Substitution/Compression (256bit) stream cipher
+
+.SH LIBRARY
+xsc256 stream cipher support library (libxsc, -lxsc)
+
+.SH SYNOPSIS
+.B #include<xsc256.h>
+
+.nf
+.PP
+.RB "state " *xsc256init "(int256 key);"
+.RB "unsigned char " xsc256byte "(state *st);"
+.RB "void " xsc256uninit "(state *st);"
+.RB "int256 " xsc256kdf "(unsigned char *passphrase);
+
+.PP
+.RB "unsigned char " *xsc256encrypt "(state *st,unsigned char *data, unsigned short in count);"
+.RB "unsigned char " *xsc256decrypt "(state *st, unsigned char *data, unsigned short int);"
+.PP
+.RB "void " encryptfile "(int256 key);"
+.RB "void " encryptfile "(unsigned char *passphrase);"
+.ni
+
+.SH DESCRIPTION
+.PP
+The XSC functions implements the 256bit Expansion/Substitution/Compression
+stream cipher. It generates a stream of random
+loking bytes (keystream)which you use to XOR'oring them with your
+cleartext mesage and this becomes the encypted ciphertext.
+If you XOR the same keystream bytes with the ciphertext , you recover the original mesage.Different encryption
+keys result in Different keystreams.
+
+.PP
+.RB "The " xscinit() 
+function initialize the cipher based on the ecnyption key 
+and makes the cipher ready to start producing
+keystream bytes. The function returns a handle to internal state of the
+cipher , which is poassed to many of the other function
+
+.PP
+.RB "The " xsc256byte() 
+function takes the state pointer as input and produces one
+byte of keystream and returns it as an unsigned char.
+
+.PP
+.RB "The  " xsc256uninit()
+uninitializes the cipher by free'ing all the subkeys in a 
+secure manner;, as well as the internal state.
+
+.PP
+.RB "The " xsc256kdf() 
+function is independent from the init function and the state
+It takes a null-terminated string (containinga passphrase) 
+as input, runs the key derivation function based on SHA256 and
+and produces a 256 bit encyption key that can be passed to the other functions.
+
+.PP
+The passphrase has a maximum length of 254 bytes.
+
+.PP
+.RB "The " xsc256encrypt() " and" " xsc256decrypt()"
+are the support functions which iterates
+through a character array , XOR'oring each byte
+with a keystream byte provided by xsc256byte() . Encyprion and decryption is
+the same operation in stream ciphers, so the 
+decyption function is just a micro alias for 
+.BR xsc256encrypt().
+
+.pp
+The result is returned in a pointer to malloc()'d data, so make sure to free() 
+it afterwards
+
+.PP
+And finally , the 
+.BR encryptfile() 
+function is used to encrypt (or decrypt) an 
+entire file in one go. It is completely independent
+from frothe other functions (internally it runs the kdf function [If 
+neccessary], then the init function, followed by 
+.BR " xsc256encrypt " "and finally " xsc256uninit ).
+
+.PP
+It is an overloaded function so it either takes an init256 encyption key as and
+argument, or a null-terminated passphrase
+string and if so, turns it into an int256 by calling the KDF function. The
+.BR encryptfile() 
+function reads the file from the stdin
+and writes the encrypted or decypted output to the stdout
+
+.SH EXAMPLES
+The following code will encrypt the string "shall I compare thee to a summer's 
+day?" using the passphrase "foobar". The encrypted output will be written in stdout.
+
+.nf
+.PP
+.RS
+/*gcc file.c -0 file -lxsc */
+#include<stdio.h>
+#include<xsc256.h>
+
+int main(){
+.RS
+state *st;
+
+int256 key;
+
+unsigned char *passphrase, *text,*ciphertext;
+
+text="Shall i compare thee to a summer's day?";
+
+passphrase="foobar";
+
+key=xsc256kdf(passphrase);
+
+st =xsc256init(key);
+
+if(!key || state) return -1 ;
+
+ciphertext=xsc256encrypt(st,text,strlen(text));
+
+if(ciphertext){
+    printf("ciphertext = '%s'\n",ciphertext);
+
+    free(ciphertext);
+}
+xsc256uninit(st);
+
+return 0;
+.RE
+}
+.RE
+
+.PP
+It's even easier if you want to encrypt standard input:
+
+.PP 
+.RS 
+int main(){
+.RS 
+unsigned char *passphrase;
+
+passphrase="foobar";
+
+encryptfile(passphrase);
+
+return 0;
+.RE 
+}
+.RE 
+.fi 
+
+.SH SEE ALSO
+
+
+.SH AUTHORS 
+Brighton Gorova <brightongorova@gmail.com>
