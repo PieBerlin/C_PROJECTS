@@ -1,8 +1,39 @@
 // cache22.c
 #include"cache22.h"
 
+int32 handle_hello(Client *cli,int8 *folder, int8 *args);
+
 bool server_continuation;
 bool child_continuation;
+
+int32 handle_hello(Client *cli,int8 *folder, int8 *args){
+    dprintf(cli->s, "Hello, %s:%d\n", cli->ip, cli->port);
+    return 0;
+}
+
+CmdHandler handlers []= {
+    {(int8 *)"hello", handle_hello},
+   
+
+};
+
+Callback getcmd(int8 *cmd){
+    Callback cb;
+    int16 n,arraylength;
+    if (sizeof(handlers )< 16 )
+        return 0;
+    arraylength = sizeof(handlers) / 16;
+    cb = 0;
+    for (n = 0; n < arraylength; n++)
+    {
+        if(!strcmp((char *)cmd, (char *)handlers[n].cmd)){
+            cb = handlers[n].handler;
+            break;
+        }
+    }
+         return cb;
+}
+
 void zero(int8 *buf, int16 size)
 {
     int8 *p;
@@ -20,6 +51,9 @@ void childloop(Client *cli){
     int8 *p,*f;
     int16 n;
     int8 cmd[256], folder[256], args[256];
+
+    // write(cli->s,"hey\n",4);
+    // exit(0);
 
     zero(buf,256);
     read(cli->s, (char*)buf, 255);
@@ -49,9 +83,18 @@ void childloop(Client *cli){
         strncpy((char*)cmd,(char *)buf,255);
         goto done;
     }
-    else if ((*p == ' ') || (*p == '\n') || (*p == '\r')){
+    else if(*p == ' '){
+         *p = 0;
+        strncpy((char*)cmd,(char *)buf,255);
+
+
+    }
+    else if (
+       // (*p == ' ') || 
+    (*p == '\n') || (*p == '\r')){
         *p = 0;
         strncpy((char*)cmd,(char *)buf,255);
+        goto done;
     }
 
     for (p++ , f=p;
@@ -78,6 +121,7 @@ void childloop(Client *cli){
     p++;
 
     if (*p){
+
         strncpy((char *)args, (char *)p, 255);
         for (p = args; (*p) && (*p != '\n') && (*p);p++)
             ;
@@ -91,6 +135,7 @@ void childloop(Client *cli){
         dprintf(cli->s, "args:\t%s\n", args);
 
         return;
+
 }
 
 void mainloop(int s){
@@ -116,7 +161,7 @@ void mainloop(int s){
     assert(client);
 
     zero((int8 *)client,sizeof(struct s_client));
-    client->s = s;
+    client->s = s2;
     client->port = port;
     strncpy(client->ip, ip, 15);
 
@@ -172,6 +217,17 @@ int main(int argc, char *argv[]){
     char *sport;
     int16 port;
     int s;
+
+    Callback x;
+
+
+    x = getcmd((int8 *)"hello");
+    printf("main: %p\n", x);
+
+    // x = getcmd((int8 *)"maslfhkjg");
+    // printf("main: %p\n", x);
+    
+    return 0;
 
     if(argc<2){
         sport = PORT;
