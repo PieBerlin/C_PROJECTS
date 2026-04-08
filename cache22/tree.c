@@ -9,6 +9,56 @@ Tree root = {
     .path = "/"
     }};
 
+    int8* indent(int8 n){
+        static int8 buf[256];
+        int8 *p;
+        int16 i;
+
+        if (n < 1 )return (int8*)"";
+
+        // 256 /2 = 128
+        assert(n < 120);
+        zero(buf,256);
+
+        for (i = 0, p = buf; i < n; i++, p+=2){
+            memcpy((char *)p, "  ", 2);
+        }
+        return buf;
+    }
+
+void print_tree(int fd,Tree *_root){
+    int8 indentation;
+    int8 buf[256];
+    int16 size;
+    Node *n;
+    Leaf *l ;
+
+    indentation = 0;
+
+    for (n = (Node *)_root; n ;n = n ->west){
+        Print(indent(indentation++));
+        Print(n->path);
+        printf("\n");
+
+        if(n->east){
+            for (l = n->east; l; l = l ->east ){
+            
+
+                Print(indent(indentation));
+                Print(n->path);
+                Print("/");
+                Print(l->key);
+                Print(" --> '");
+                write(fd,(char*)l->value, (int)l->size);
+                Print("'\n");
+            }
+        }
+
+    }
+
+    return;
+    }
+
     void zero(int8 *str,int16 size){
         int8 *p;
         int16 n;
@@ -33,7 +83,7 @@ Tree root = {
         parent->west = n;
         n->tag = TagNode;
         n->north = (struct u_node*)parent;
-        strncpy((char *)n->path, (char *)path, 255);
+        strncpy((char *)n->path, (char *)path, 254);
         return n;
     }
 
@@ -82,12 +132,13 @@ Tree root = {
 
         new->west = (!l)?(Tree *)parent : (Tree *)l;
 
-        strncpy((char *)new->key, (char *)key, 127);
+        strncpy((char *)new->key, (char *)key, 126);
 
         new->value = (int8 *)malloc(count);
-        zero(new->value, count);
         assert(new->value);
-        strncpy((char *)new->value, (char *)value, count);
+        zero(new->value, count);
+        
+        strncpy((char *)new->value, (char *)value, count-1);
         new->size = count;
         return new;
 
@@ -97,6 +148,8 @@ Tree root = {
         Leaf *l1, *l2;
         int8 *key,*value;
         int16 size;
+
+   
 
         n = create_node((Node *)&root, (int8 *)"/Users");
         // printf("%p\n", (void*)&root);
@@ -110,7 +163,8 @@ Tree root = {
 
         l1 = create_leaf(n2, key, value, size);
         assert(l1);
-        printf("%s\n", l1->value);
+
+        // printf("%s\n", l1->value);
 
         key = (int8 *)"bato";
         value = (int8 *)"asf46790jkl";
@@ -119,7 +173,10 @@ Tree root = {
         assert(l2);
         printf("%s\n",l2->key);
         
-        printf("%p %p\n", n, n2);
+        //printf("%p %p\n", n, n2);
+
+        print_tree(1, &root);
+
         free(n);
         free(n2);
 

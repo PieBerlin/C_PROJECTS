@@ -1,4 +1,6 @@
 /* tree.h */
+
+
 #define _GNU_SOURCE
 #include<stdio.h>
 #include<unistd.h>
@@ -6,6 +8,13 @@
 #include<string.h>
 #include<assert.h>
 #include<errno.h>
+
+// ignore unnecessary warnings
+
+
+#pragma GCC diagnostic ignored  "-Wstringop-truncation"
+#pragma GCC diagnostic warning  "-Wstringop-truncation"
+#pragma GCC diagnostic push
 
 
 
@@ -21,6 +30,21 @@
 #define reterr(x) \
     errno = (x);  \
     return nullptr
+
+    #define Print(x) do {                      \
+    zero(buf, 256);                        \
+    snprintf((char *)buf, 256, "%s", (char *)(x)); \
+    size = (int16)strlen((char *)buf);     \
+    if (size)                              \
+        write(fd, (char *)buf, size);      \
+} while(0)
+
+// #define Print(x)              
+//     zero(buf, 256);                       
+//     strncpy((char *)buf, (char *)(x), 254); 
+//     size = (int16)strlen((char *)buf);     
+//     if (size)                            
+//         write(fd, (char *)buf, size);
 
 /*
  /
@@ -52,6 +76,8 @@ struct s_node{
     int8 path[256];
 };
 
+
+
 typedef struct s_node Node;
 
 struct s_leaf{
@@ -70,3 +96,15 @@ union u_tree{
     Leaf l;
 };
 typedef union u_tree Tree;
+
+int8 *indent(int8);
+void print_tree(int,Tree *);
+void zero(int8 *, int16);
+Node *create_node(Node *, int8 *);
+Leaf *find_last_linear(Node *);
+Leaf *create_leaf(Node *, int8 *, int8 *, int16);
+int main(void);
+
+
+
+#pragma GCC diagnostic pop

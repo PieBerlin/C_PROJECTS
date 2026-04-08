@@ -1,256 +1,156 @@
 // cache22.c
-#include"cache22.h"
+#include "cache22.h"
 
-int32 handle_hello(Client *cli,int8 *folder, int8 *args);
+int32 handle_hello(Client *cli, int8 *folder, int8 *args);
 
 bool server_continuation;
 bool child_continuation;
 
-int32 handle_hello(Client *cli,int8 *folder, int8 *args){
+int32 handle_hello(Client *cli, int8 *folder, int8 *args) {
     dprintf(cli->s, "Hello, %s:%d\n", cli->ip, cli->port);
     return 0;
 }
 
-CmdHandler handlers []= {
+CmdHandler handlers[] = {
     {(int8 *)"hello", handle_hello},
-   
-
 };
 
-Callback getcmd(int8 *cmd){
-    Callback cb;
-    int16 n,arraylength;
-    if (sizeof(handlers )< 16 )
-        return 0;
+Callback getcmd(int8 *cmd) {
+    int16 n, arraylength;
+    if (sizeof(handlers) < 16) return 0;
     arraylength = sizeof(handlers) / 16;
-    cb = 0;
-    for (n = 0; n < arraylength; n++)
-    {
-        if(!strcmp((char *)cmd, (char *)handlers[n].cmd)){
-            cb = handlers[n].handler;
-            break;
+    for (n = 0; n < arraylength; n++) {
+        if (!strcmp((char *)cmd, (char *)handlers[n].cmd)) {
+            return handlers[n].handler;
         }
     }
-         return cb;
+    return 0;
 }
 
-void zero(int8 *buf, int16 size)
-{
+void zero(int8 *buf, int16 size) {
     int8 *p;
     int16 n;
-    for (n = 0, p = buf; n < size; n++,p++){
+    for (n = 0, p = buf; n < size; n++, p++) {
         *p = 0;
     }
-    return;
 }
 
-
-
-void childloop(Client *cli){
+void childloop(Client *cli) {
     int8 buf[256];
-    int8 *p,*f;
+    int8 *p, *f;
     int16 n;
     int8 cmd[256], folder[256], args[256];
 
-    // write(cli->s,"hey\n",4);
-    // exit(0);
-
-    zero(buf,256);
+    zero(buf, 256);
     read(cli->s, (char*)buf, 255);
     n = (int16)strlen((char*)buf);
-    if (n>254){ n = 254; }
-
-    
-
-    //select /Users/goro
-    // create /Users/logins
-    // insert /Users/bato hdhjoewuufcwhoABV
-    for (p = buf;
-         (*p) 
-        && (n--)
-        && (*p != ' ')
-        && (*p != '\n') 
-        && (*p != '\r')
-
-        ; p++);
+    if (n > 254) n = 254;
 
     zero(cmd, 256);
     zero(folder, 256);
     zero(args, 256);
 
-    if (!(*p) || (!n))
-    {
-        strncpy((char*)cmd,(char *)buf,255);
+    for (p = buf; (*p) && (n--) && (*p != ' ') && (*p != '\n') && (*p != '\r'); p++);
+
+    if (!(*p) || (!n)) {
+        strncpy((char*)cmd, (char *)buf, 254);
         goto done;
-    }
-    else if(*p == ' '){
-         *p = 0;
-        strncpy((char*)cmd,(char *)buf,255);
+    } else {
+        *p = 0; // Null terminate buf at the split
+        //  Guarantees null-termination and silences the warning
+        snprintf((char*)cmd, sizeof(cmd), "%s", (char*)buf);
 
+        // strncpy((char*)cmd, (char *)buf, 254);
 
+        cmd[255] = '\0';  
     }
-    else if (
-       // (*p == ' ') || 
-    (*p == '\n') || (*p == '\r')){
+
+    for (p++, f = p; (*p) && (n--) && (*p != ' ') && (*p != '\n') && (*p != '\r'); p++);
+
+    if (!(*p) || (!n)) {
+        strncpy((char*)folder, (char *)f, 254);
+        goto done;
+    } else {
         *p = 0;
-        strncpy((char*)cmd,(char *)buf,255);
-        goto done;
+        strncpy((char*)folder, (char *)f, 254);
     }
 
-    for (p++ , f=p;
-         (*p) 
-         && (n--)
-         && (*p != ' ')
-        && (*p != '\n')
-        && (*p != '\r')
-
-
-         ; p++);
-
-
-    if (!(*p) || (!n))
-    {
-        strncpy((char*)folder,(char *)f,255);
-        goto done;
-
-        }
-    else if ((*p == ' ') || (*p == '\n') || (*p == '\r')){
-        *p = 0;
-        strncpy((char*)folder,(char *)f,255);
-    }
     p++;
-
-    if (*p){
-
-        strncpy((char *)args, (char *)p, 255);
-        for (p = args; (*p) && (*p != '\n') && (*p);p++)
-            ;
-
-            *p = 0;
+    if (*p) {
+        strncpy((char *)args, (char *)p, 254);
+        for (f = args; (*f) && (*f != '\n') && (*f != '\r'); f++);
+        *f = 0;
     }
 
-    done:
-        dprintf(cli->s, "\ncmd:\t%s\n", cmd);
-        dprintf(cli->s, "folder:\t%s\n", folder);
-        dprintf(cli->s, "args:\t%s\n", args);
-
-        return;
-
+done:
+    dprintf(cli->s, "\ncmd:\t%s\n", cmd);
+    dprintf(cli->s, "folder:\t%s\n", folder);
+    dprintf(cli->s, "args:\t%s\n", args);
 }
 
-void mainloop(int s){
+void mainloop(int s) {
     struct sockaddr_in cli;
     int s2;
-    int32 len;
-    char *ip;
-    int16 port;
+    uint32_t len = sizeof(cli);
     Client *client;
     pid_t pid;
 
-    s2 = accept(s, (struct sockaddr *)&cli,(unsigned int *)&len);
-    if (s2<0){
-       // sleep(1);
-        return;
-    }
-
-    port = (int16)htons((int)cli.sin_port);
-    ip = inet_ntoa(cli.sin_addr);
-    printf("Connection from  %s:%d\n",ip,port);
+    s2 = accept(s, (struct sockaddr *)&cli, &len);
+    if (s2 < 0) return;
 
     client = (Client *)malloc(sizeof(struct s_client));
     assert(client);
-
-    zero((int8 *)client,sizeof(struct s_client));
+    zero((int8 *)client, sizeof(struct s_client));
+    
     client->s = s2;
-    client->port = port;
-    strncpy(client->ip, ip, 15);
+    client->port = (int16)ntohs(cli.sin_port);
+    strncpy(client->ip, inet_ntoa(cli.sin_addr), 15);
 
     pid = fork();
-    if(pid){
+    if (pid > 0) {
+        close(s2);
         free(client);
-
         return;
-    }
-    else{
-        dprintf(s2,"100 Connected to cache22 server\n...");
+    } else if (pid == 0) {
+        dprintf(s2, "100 Connected to cache22 server\n...");
         child_continuation = true;
-        while(child_continuation){
-        childloop(client);
-
+        while (child_continuation) {
+            childloop(client);
         }
         close(s2);
         free(client);
-        return ;
+        exit(0);
     }
-
-    //return ;
 }
 
-int initserver(int16 port){
+int initserver(int16 port) {
     struct sockaddr_in sock;
     int s;
 
+    s = socket(AF_INET, SOCK_STREAM, 0);
+    assert(s > 0);
+
     sock.sin_family = AF_INET;
     sock.sin_port = htons(port);
-    sock.sin_addr.s_addr = inet_addr(HOST); 
-    s = socket(AF_INET, SOCK_STREAM, 0);
+    sock.sin_addr.s_addr = inet_addr("127.0.0.1"); // Or your HOST define
 
-    assert(s>0);
-    errno = 0;
-    if (bind(s, (struct sockaddr *)&sock, sizeof(sock)))
-    {
-        assert_perror(errno);
+    if (bind(s, (struct sockaddr *)&sock, sizeof(sock)) < 0) {
+        perror("bind failed");
         exit(1);
     }
-    errno = 0;
-    if (listen(s, 20))
-    {
-        assert_perror(errno);
-    }
-    
-    printf("Server listenning on %s:%d\n",HOST,port);
-
+    listen(s, 20);
     return s;
 }
 
-int main(int argc, char *argv[]){
-    char *sport;
-    int16 port;
-    int s;
+int main(int argc, char *argv[]) {
+    int16 port = 8080;
+    if (argc > 1) port = (int16)atoi(argv[1]);
 
-    Callback x;
-
-
-    x = getcmd((int8 *)"hello");
-    printf("main: %p\n", x);
-
-    // x = getcmd((int8 *)"maslfhkjg");
-    // printf("main: %p\n", x);
-    
-    return 0;
-
-    if(argc<2){
-        sport = PORT;
-    }
-    else{
-        sport = argv[1];
-    }
-
-    port = (int16)atoi(sport);
-
-    s=initserver(port);
-
+    int s = initserver(port);
     server_continuation = true;
-    while(server_continuation){
+    while (server_continuation) {
         mainloop(s);
-
-        
     }
-
-    printf("Shutting down... \n");
     close(s);
-
     return 0;
- }
-
- #pragma GCC diagnostic pop
+}
