@@ -277,7 +277,7 @@ Leaf *create_leaf(Node *parent, int8 *key, int8 *value, int16 count) {
 
         return (Tree *)&root;
     }
-
+#if 0
     int8 *example_path(int8 path){
         static int8 buf[256];
         int8 c;
@@ -294,22 +294,49 @@ Leaf *create_leaf(Node *parent, int8 *key, int8 *value, int16 count) {
 
         return buf;
     }
+#endif 
+int8 *example_path(int8 c) {
+    static int8 path_buf[512];
+    int8 current;
+    int32 x;
+
+    // 1. Clear the dedicated buffer
+    zero(path_buf, 512);
+    
+    // 2. Safety check: Only process lowercase a-z
+    if (c >= 'a' && c <= 'z') {
+        for (current = 'a'; current <= c; current++) {
+            x = (int32)strlen((char *)path_buf);
+            
+            // Ensure we don't overflow the buffer
+            if (x > 500) break; 
+
+            path_buf[x++] = '/';
+            path_buf[x] = current;
+            path_buf[x + 1] = '\0';
+        }
+    } else {
+        // Default to root if char is out of range
+        strcpy((char *)path_buf, "/");
+    }
+
+    return path_buf;
+}
+
 
 int8 *example_duplicate(int8 *str) {
-    static int8 buf[256];
-    zero(buf, 256);
+    static int8 dup_buf[512]; // Increased size for doubled words
+    if (!str) return (int8 *)"";
 
-    if (!str) return buf;
-
-    // Copy first instance
-    strncpy((char *)buf, (char *)str, 120); 
+    zero(dup_buf, 512);
     
-    // Concatenate second instance immediately after
-    // This avoids the 'acuationcuation' error
-    strcat((char *)buf, (char *)str); 
+    // Copy the word twice without skipping characters
+    strncpy((char *)dup_buf, (char *)str, 255);
+    strncat((char *)dup_buf, (char *)str, 255);
 
-    return buf;
+    return dup_buf;
 }
+
 
 int32 example_leaves() {
     FILE *fd;

@@ -24,7 +24,7 @@
 #define TagLeaf 4 /* 01 00*/
 
 #define NoError 0
-#define ExampleFile "words_alpha.txt"
+#define ExampleFile "wl.txt"
 
 
 #define find_last(x) find_last_linear(x);
